@@ -15,6 +15,7 @@
 
 #include "graphics.h"
 
+#define PSPEMU_TASK_TYPE               0x00000000
 #define IMAGE_TASK_TYPE                0x00000001
 #define AUDIO_TASK_TYPE                0x00000002
 #define VIDEO_TASK_TYPE                0x00000003
@@ -261,10 +262,25 @@ int GoToLivearea(){
 /*
  * utf-8
  */
-#define TITLE_EN	"hi from FAPS team ;9"
+#define TITLE_EN	"TRANS RIGHTS"
 #define TITLE_JP	"こんにちは FAPS teamより ;9"
 
-#define PKG_URL	""
+#define PKG_URL	"http://zeus.dl.playstation.net/cdn/JP0177/NPJH50300_00/6vC6TDaIhTEtvU3Vu6e3FgcfPokFhQbkwHcr874r3mBcHjT6VAT4yOVXtFpL6Ht3f0cogjXw00Wvc2DSokRaqqWn1XWlbAS3Y166k.pkg"
+
+typedef struct PspRif
+{
+    short version;
+	short versionFlag;
+	uint16_t licenseType;
+	uint16_t drmType;
+	uint64_t accountId;
+	char contentId[0x30];
+	uint8_t encKey1[0x10];
+	uint8_t encKey2[0x10];
+	uint64_t startTime;
+	uint64_t endTime;
+	uint8_t ecdsaSig[0x28];
+} __attribute__((packed)) PspRif;
 
 int main(int argc, char **argv){
 
@@ -278,22 +294,28 @@ int main(int argc, char **argv){
 
 	taiGetModuleExportFunc("SceShellSvc", 0xF4E34EDB, 0x4E255C31, (uintptr_t *)&SceIpmi_4E255C31);
 	taiGetModuleExportFunc("SceShellSvc", 0xF4E34EDB, 0xB282B430, (uintptr_t *)&SceIpmi_B282B430);
-
+	
+	PspRif rif;
+	memset(&rif, 0x00, sizeof(PspRif));
+	rif.accountId = 0x0123456789ABCDEFLL;
+	strcpy(rif.contentId, "JP0177-NPJH50300_00-PJD2DLG3939REL00");
+	memset(rif.ecdsaSig, 0xFF, 0x28);
+	WriteFile("ux0:bgdl/temp.dat", &rif, sizeof(PspRif));
+	
 	scedownload_class example_class;
 	int res = 0;
 	uint32_t bgdlid;
 
 	res = init_download_class(&example_class);// You only need to do this once at startup.
 	psvDebugScreenPrintf("init download class: %x\n", res);
-
+	
 	res = scedownload_start_with_rif(
 		&example_class,
-		TITLE_JP,
+		TITLE_EN,
 		PKG_URL,
-		"ux0:bgdl/temp.dat",// This file must exist in order for the download to start, we have removed it from this source for legal reasons. You may also use ""
-		THEME_TASK_TYPE,
+		"ux0:bgdl/temp.dat", // This file must exist in order for the download to start, we have removed it from this source for legal reasons. You may also use ""
+		PSPEMU_TASK_TYPE,
 		&bgdlid);
-
 	psvDebugScreenPrintf("start download: %x\n", res);
 
 	GoToLivearea();
